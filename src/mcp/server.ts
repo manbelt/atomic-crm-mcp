@@ -2,6 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { get_schema } from "./tools/get-schema.js";
 import { query } from "./tools/query.js";
+import { create_contact } from "./tools/create-contact.js";
+import { search_contacts } from "./tools/search-contacts.js";
+import { get_summary } from "./tools/get-summary.js";
+import { recordUsage, sanitizeParams } from "../services/usage-tracker.js";
 import type { AuthInfo } from "../auth/jwt-validator.js";
 
 export interface McpContext {
@@ -16,10 +20,42 @@ export function createMcpServer(context: McpContext) {
   );
 
   // Register all tools
-  for (const [name, tool] of Object.entries({ get_schema, query })) {
-    server.registerTool(name, tool.definition, async (params: any) =>
-      tool.handler(params, context)
-    );
+  const tools = { 
+    get_schema, 
+    query, 
+    create_contact, 
+    search_contacts, 
+    get_summary 
+  };
+  
+  for (const [name, tool] of Object.entries(tools)) {
+    server.registerTool(name, tool.definition, async (params: any) => {
+      const startTime = Date.now();
+      let success = true;
+      let errorMessage: string | undefined;
+
+      try {
+        const result = await tool.handler(params, context);
+        return result;
+      } catch (error) {
+        success = false;
+        errorMessage = error instanceof Error ? error.message : String(error);
+        throw error;
+      } finally {
+        // Record usage asynchronously (don't block the response)
+        const durationMs = Date.now() - startTime;
+        recordUsage({
+          userId: context.authInfo.userId,
+          toolName: name,
+          paramsSummary: sanitizeParams(params),
+          success,
+          errorMessage,
+          durationMs,
+        }).catch((err) => {
+          console.error("Failed to record usage:", err);
+        });
+      }
+    });
   }
 
   return server;

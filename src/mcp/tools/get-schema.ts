@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { executeQuery } from "./query.js";
+import { executeRawQuery } from "../../db/query-builder.js";
 import type { McpContext } from "../server.js";
 
+/**
+ * Get database schema information
+ */
 async function getSchemaData(
-  authInfo: McpContext["authInfo"],
-  userToken: string
+  context: McpContext
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
     // Get columns with table type (table vs view)
+    // These are safe static queries against information_schema
     const columnsQuery = `
       SELECT
         c.table_name,
@@ -24,7 +27,7 @@ async function getSchemaData(
       ORDER BY c.table_name, c.ordinal_position;
     `;
 
-    const columnsResult = await executeQuery(columnsQuery, authInfo, userToken);
+    const columnsResult = await executeRawQuery(columnsQuery, context);
 
     if (!columnsResult.success) {
       return {
@@ -51,7 +54,7 @@ async function getSchemaData(
       ORDER BY cl.relname, att.attname;
     `;
 
-    const foreignKeysResult = await executeQuery(foreignKeysQuery, authInfo, userToken);
+    const foreignKeysResult = await executeRawQuery(foreignKeysQuery, context);
 
     // Group columns by table and track table types
     const tables: Record<string, { columns: any[]; tableType: string }> = {};
@@ -114,7 +117,7 @@ async function getSchemaData(
       data: schemaText || "No tables found in the public schema.",
     };
   } catch (error) {
-    console.error("Schema retrieval error:", error);
+    console.error("Schema retrieval error:", error instanceof Error ? error.message : "Unknown error");
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -139,7 +142,7 @@ This helps you write accurate SQL queries including JOINs without guessing table
     inputSchema: z.object({}),
   },
   handler: async (_params: {}, context: McpContext) => {
-    const result = await getSchemaData(context.authInfo, context.userToken);
+    const result = await getSchemaData(context);
 
     return {
       content: [

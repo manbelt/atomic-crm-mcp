@@ -1,75 +1,29 @@
-import pg from "pg";
 import { z } from "zod";
-import { decodeJwt } from "jose";
-import { config } from "../../config.js";
-import type { AuthInfo } from "../../auth/jwt-validator.js";
+import { executeRawQuery } from "../../db/query-builder.js";
+import { validateSqlQuery } from "../../db/sql-validation.js";
 import type { McpContext } from "../server.js";
 
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: config.databaseUrl,
-});
-
-export async function executeQuery(
+/**
+ * Execute a read-only SQL query with validation
+ */
+async function executeReadOnlyQuery(
   sql: string,
-  authInfo: AuthInfo,
-  userToken: string
-): Promise<{ success: boolean; data?: any; error?: string }> {
-  let client;
-
-  try {
-    client = await pool.connect();
-    const jwtClaims = decodeJwt(userToken);
-
-    await client.query("BEGIN");
-
-    await client.query(`SET LOCAL role = 'authenticated'`);
-
-    // SET commands don't support parameterized queries, so we need to escape and embed the JSON
-    const claimsJson = JSON.stringify(jwtClaims).replace(/'/g, "''");
-    await client.query(`SET LOCAL request.jwt.claims = '${claimsJson}'`);
-
-    const result = await client.query(sql);
-
-    await client.query("COMMIT");
-
-    return {
-      success: true,
-      data: result.rows,
-    };
-  } catch (error) {
-    console.error("Query execution error:", error);
-
-    if (client) {
-      try {
-        await client.query("ROLLBACK");
-      } catch (rollbackError) {
-        console.error("Rollback error:", rollbackError);
-      }
-    }
-
-    // Handle AggregateError which has multiple errors
-    let errorMessage: string;
-    if (error instanceof AggregateError && error.errors.length > 0) {
-      errorMessage = error.errors
-        .map((e) => (e instanceof Error ? e.message : String(e)))
-        .join("; ");
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    } else {
-      errorMessage = String(error);
-    }
-
+  context: McpContext
+): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  // Validate the query first
+  const validation = validateSqlQuery(sql);
+  if (!validation.valid) {
     return {
       success: false,
-      error: errorMessage || "Unknown database error",
+      error: validation.error,
     };
-  } finally {
-    if (client) {
-      client.release();
-    }
   }
+
+  // Remove trailing semicolon if present
+  const cleanSql = sql.trim().replace(/;$/, '');
+
+  // Execute the query
+  return executeRawQuery(cleanSql, context);
 }
 
 export const query = {
@@ -77,6 +31,11 @@ export const query = {
     description: `Query data from the user's Atomic CRM instance using SQL.
 
 IMPORTANT: Before using this tool, you MUST call the get_schema tool first to understand what tables and columns are available in the database.
+
+SECURITY: This tool only accepts SELECT queries. The following operations are forbidden:
+- INSERT, UPDATE, DELETE, DROP, TRUNCATE
+- ALTER, CREATE, GRANT, REVOKE
+- Any DDL or DML operations
 
 Use this tool when the user asks about their CRM data such as:
 - Contacts, companies, and deals
@@ -97,18 +56,16 @@ Examples:
     inputSchema: z.object({
       sql: z
         .string()
+        .min(1)
+        .max(10000)
         .describe(
-          "PostgreSQL query to execute against the Atomic CRM database. Supports standard SQL including SELECT, JOINs, aggregations, and PostgreSQL functions. RLS policies are automatically enforced."
+          "PostgreSQL SELECT query to execute against the Atomic CRM database. Only SELECT queries are allowed. RLS policies are automatically enforced."
         ),
     }),
   },
   handler: async (params: { sql: string }, context: McpContext) => {
     try {
-      const result = await executeQuery(
-        params.sql,
-        context.authInfo,
-        context.userToken
-      );
+      const result = await executeReadOnlyQuery(params.sql, context);
 
       return {
         content: [
@@ -119,6 +76,7 @@ Examples:
               : `Error: ${result.error}`,
           },
         ],
+        isError: !result.success,
       };
     } catch (error) {
       console.error("Tool handler error:", error);
