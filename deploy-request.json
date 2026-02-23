@@ -1,0 +1,9 @@
+{
+  "name": "atomic-crm-mcp",
+  "gitSource": {
+    "type": "github",
+    "ref": "main",
+    "repoId": "958590277"
+  },
+  "target": "production"
+}
