@@ -1,0 +1,6 @@
+{
+  "key": "SUPABASE_ANON_KEY",
+  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhcHFjbmxiaWxjcHd3bHdpdnZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg0NzY4ODUsImV4cCI6MjA1NDA1Mjg4NX0.4X8FfQZ5-xC_QQqHqxqDQGxMX-qvQxD-0W5DfL9P8YQ",
+  "type": "plain",
+  "target": ["production", "preview"]
+}
