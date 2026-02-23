@@ -1,0 +1,5 @@
+{
+  "name": "atomic-crm-mcp",
+  "description": "Production-ready MCP Server for Atomic CRM",
+  "private": false
+}
