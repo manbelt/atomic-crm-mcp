@@ -13,12 +13,10 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "vercel-build": "tsc",
-    "vercel-dev": "vercel dev"
+    "test:watch": "vitest"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "keywords": [],
   "author": "",

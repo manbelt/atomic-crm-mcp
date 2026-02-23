@@ -1,25 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "name": "atomic-crm-mcp",
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.ts"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
+  "outputDirectory": "dist",
   "functions": {
-    "api/index.ts": {
-      "memory": 1024,
+    "api/**/*.ts": {
       "maxDuration": 30
     }
   },
