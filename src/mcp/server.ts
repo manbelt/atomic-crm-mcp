@@ -5,6 +5,8 @@ import { query } from "./tools/query.js";
 import { create_contact } from "./tools/create-contact.js";
 import { search_contacts } from "./tools/search-contacts.js";
 import { get_summary } from "./tools/get-summary.js";
+import { create_deal } from "./tools/create-deal.js";
+import { create_task } from "./tools/create-task.js";
 import { recordUsage, sanitizeParams } from "../services/usage-tracker.js";
 import type { AuthInfo } from "../auth/jwt-validator.js";
 
@@ -25,7 +27,9 @@ export function createMcpServer(context: McpContext) {
     query, 
     create_contact, 
     search_contacts, 
-    get_summary 
+    get_summary,
+    create_deal,
+    create_task,
   };
   
   for (const [name, tool] of Object.entries(tools)) {
