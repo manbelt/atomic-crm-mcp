@@ -14,6 +14,7 @@ const config = {
   databaseUrl: process.env.DATABASE_URL || '',
   supabaseUrl: process.env.SUPABASE_URL || '',
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   mcpServerUrl: process.env.MCP_SERVER_URL || 'https://atomic-crm-mcp.vercel.app',
   nodeEnv: process.env.NODE_ENV || 'production',
 };
@@ -38,11 +39,11 @@ async function validateJwt(token: string): Promise<AuthInfo | null> {
       return null;
     }
     
-    // Verify with Supabase
+    // Verify with Supabase (use service key for admin access)
     const response = await fetch(`${config.supabaseUrl}/auth/v1/user`, {
       headers: {
         'Authorization': `Bearer ${token}`,
-        'apikey': config.supabaseAnonKey,
+        'apikey': config.supabaseServiceKey || config.supabaseAnonKey,
       },
     });
     
