@@ -319,9 +319,11 @@ const tools = {
       inputSchema: z.object({
         name: z.string().min(1).max(200),
         company_id: z.number().int().positive().optional(),
+        contact_ids: z.array(z.number().int().positive()).optional(),
         stage: z.string().max(50).optional().default('opportunity'),
         amount: z.number().int().positive().optional(),
-        probability: z.number().int().min(0).max(100).optional(),
+        description: z.string().max(5000).optional(),
+        expected_closing_date: z.string().optional(),
       }),
     },
     handler: async (params: any, context: McpContext) => {
@@ -365,16 +367,22 @@ const tools = {
     definition: {
       description: 'Create a new task',
       inputSchema: z.object({
-        title: z.string().min(1).max(200),
-        description: z.string().max(5000).optional(),
-        contact_id: z.string().uuid().optional(),
+        type: z.string().max(100).optional().default('general'),
+        text: z.string().max(5000),
+        contact_id: z.number().int().positive().optional(),
         due_date: z.string().optional(),
-        status: z.string().max(50).optional().default('pending'),
-        priority: z.string().max(20).optional().default('medium'),
       }),
     },
     handler: async (params: any, context: McpContext) => {
       try {
+        // Map parameters to actual database columns
+        const taskData = {
+          type: params.type || 'general',
+          text: params.text,
+          contact_id: params.contact_id || null,
+          due_date: params.due_date || new Date().toISOString(),
+        };
+        
         const response = await fetch(`${config.supabaseUrl}/rest/v1/tasks`, {
           method: 'POST',
           headers: {
@@ -383,7 +391,7 @@ const tools = {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
-          body: JSON.stringify(params),
+          body: JSON.stringify(taskData),
         });
         
         if (!response.ok) {
@@ -415,10 +423,14 @@ const tools = {
       description: 'Create a new company',
       inputSchema: z.object({
         name: z.string().min(1).max(200),
-        website: z.string().url().max(500).optional(),
-        phone: z.string().max(50).optional(),
-        industry: z.string().max(100).optional(),
-        size: z.string().max(50).optional(),
+        website: z.string().max(500).optional(),
+        phone_number: z.string().max(50).optional(),
+        sector: z.string().max(100).optional(),
+        size: z.number().int().optional(),
+        address: z.string().max(500).optional(),
+        city: z.string().max(100).optional(),
+        country: z.string().max(100).optional(),
+        description: z.string().max(2000).optional(),
       }),
     },
     handler: async (params: any, context: McpContext) => {
@@ -462,8 +474,8 @@ const tools = {
     definition: {
       description: 'Create a note on a contact or deal',
       inputSchema: z.object({
-        content: z.string().min(1).max(10000),
-        contact_id: z.string().uuid().optional(),
+        text: z.string().min(1).max(10000),
+        contact_id: z.number().int().positive().optional(),
         deal_id: z.number().int().positive().optional(),
         type: z.string().max(50).optional().default('general'),
       }),
@@ -472,9 +484,12 @@ const tools = {
       try {
         const table = params.contact_id ? 'contactNotes' : 'dealNotes';
         const noteData = {
-          text: params.content,
-          type: params.type || 'general',
-          ...(params.contact_id ? { contact_id: params.contact_id } : { deal_id: params.deal_id }),
+          text: params.text,
+          date: new Date().toISOString(),
+          ...(params.contact_id 
+            ? { contact_id: params.contact_id } 
+            : { deal_id: params.deal_id, type: params.type || 'general' }
+          ),
         };
         
         const response = await fetch(`${config.supabaseUrl}/rest/v1/${table}`, {
@@ -521,8 +536,8 @@ const tools = {
         last_name: z.string().min(1).max(100).optional(),
         email: z.string().email().optional(),
         phone: z.string().max(50).optional(),
-        title: z.string().max(100).optional(),
-        status: z.string().max(50).optional(),
+        job_title: z.string().max(100).optional(),
+        company_id: z.number().int().positive().optional(),
       }),
     },
     handler: async (params: any, context: McpContext) => {
@@ -572,7 +587,8 @@ const tools = {
         name: z.string().min(1).max(200).optional(),
         stage: z.string().max(50).optional(),
         amount: z.number().int().positive().optional(),
-        probability: z.number().int().min(0).max(100).optional(),
+        description: z.string().max(5000).optional(),
+        expected_closing_date: z.string().optional(),
       }),
     },
     handler: async (params: any, context: McpContext) => {
@@ -619,10 +635,10 @@ const tools = {
       description: 'Update an existing task',
       inputSchema: z.object({
         id: z.number().int().positive(),
-        title: z.string().min(1).max(200).optional(),
-        status: z.string().max(50).optional(),
-        priority: z.string().max(20).optional(),
+        type: z.string().max(100).optional(),
+        text: z.string().max(5000).optional(),
         due_date: z.string().optional(),
+        done_date: z.string().nullable().optional(),
       }),
     },
     handler: async (params: any, context: McpContext) => {
@@ -670,9 +686,14 @@ const tools = {
       inputSchema: z.object({
         id: z.number().int().positive(),
         name: z.string().min(1).max(200).optional(),
-        website: z.string().url().max(500).optional(),
-        industry: z.string().max(100).optional(),
-        size: z.string().max(50).optional(),
+        website: z.string().max(500).optional(),
+        phone_number: z.string().max(50).optional(),
+        sector: z.string().max(100).optional(),
+        size: z.number().int().optional(),
+        address: z.string().max(500).optional(),
+        city: z.string().max(100).optional(),
+        country: z.string().max(100).optional(),
+        description: z.string().max(2000).optional(),
       }),
     },
     handler: async (params: any, context: McpContext) => {
