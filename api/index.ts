@@ -62,13 +62,13 @@ async function validateJwt(token: string): Promise<AuthInfo | null> {
   }
 }
 
-// Database query helper
+// Database query helper - uses service role key for admin access
 async function executeQuery(sql: string, params: any[], userToken: string): Promise<any> {
   const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/exec_sql`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${userToken}`,
-      'apikey': config.supabaseAnonKey,
+      'Authorization': `Bearer ${config.supabaseServiceKey}`,
+      'apikey': config.supabaseServiceKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query: sql, params }),
@@ -82,7 +82,7 @@ async function executeQuery(sql: string, params: any[], userToken: string): Prom
   return response.json();
 }
 
-// Direct Supabase REST API query
+// Direct Supabase REST API query - uses service role key for admin access
 async function supabaseQuery(table: string, options: {
   select?: string;
   filter?: string;
@@ -103,8 +103,8 @@ async function supabaseQuery(table: string, options: {
   
   const response = await fetch(url, {
     headers: {
-      'Authorization': `Bearer ${userToken}`,
-      'apikey': config.supabaseAnonKey,
+      'Authorization': `Bearer ${config.supabaseServiceKey}`,
+      'apikey': config.supabaseServiceKey,
     },
   });
   
