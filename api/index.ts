@@ -270,8 +270,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/contacts`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -322,8 +322,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/deals`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -371,8 +371,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/tasks`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -419,8 +419,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/companies`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -473,8 +473,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/${table}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -525,8 +525,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/contacts?id=eq.${id}`, {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -575,8 +575,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/deals?id=eq.${id}`, {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -625,8 +625,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/tasks?id=eq.${id}`, {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -675,8 +675,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/companies?id=eq.${id}`, {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
@@ -719,8 +719,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/contacts?id=eq.${params.id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
           },
         });
         
@@ -759,8 +759,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/deals?id=eq.${params.id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
           },
         });
         
@@ -799,8 +799,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/tasks?id=eq.${params.id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
           },
         });
         
@@ -839,8 +839,8 @@ const tools = {
         const response = await fetch(`${config.supabaseUrl}/rest/v1/companies?id=eq.${params.id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${context.userToken}`,
-            'apikey': config.supabaseAnonKey,
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey,
           },
         });
         
