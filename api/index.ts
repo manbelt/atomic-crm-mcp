@@ -267,6 +267,17 @@ const tools = {
     },
     handler: async (params: any, context: McpContext) => {
       try {
+        // Map the parameters to the actual database columns
+        const contactData = {
+          first_name: params.first_name,
+          last_name: params.last_name,
+          email: params.email || null,
+          phone: params.phone || null,
+          job_title: params.title || null,
+          company_id: params.company_id || null,
+          status: params.status || 'active',
+        };
+        
         const response = await fetch(`${config.supabaseUrl}/rest/v1/contacts`, {
           method: 'POST',
           headers: {
@@ -275,11 +286,7 @@ const tools = {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
           },
-          body: JSON.stringify({
-            ...params,
-            email_jsonb: params.email ? [{ email: params.email, type: 'Work' }] : [],
-            phone_jsonb: params.phone ? [{ number: params.phone, type: 'Work' }] : [],
-          }),
+          body: JSON.stringify(contactData),
         });
         
         if (!response.ok) {
