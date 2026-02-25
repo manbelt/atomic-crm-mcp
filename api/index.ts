@@ -369,7 +369,7 @@ const tools = {
       inputSchema: z.object({
         type: z.string().max(100).optional().default('general'),
         text: z.string().max(5000),
-        contact_id: z.number().int().positive().optional(),
+        contact_id: z.string().uuid().optional(),
         due_date: z.string().optional(),
       }),
     },
@@ -475,7 +475,7 @@ const tools = {
       description: 'Create a note on a contact or deal',
       inputSchema: z.object({
         text: z.string().min(1).max(10000),
-        contact_id: z.number().int().positive().optional(),
+        contact_id: z.string().uuid().optional(),
         deal_id: z.number().int().positive().optional(),
         type: z.string().max(50).optional().default('general'),
       }),
@@ -637,6 +637,7 @@ const tools = {
         id: z.number().int().positive(),
         type: z.string().max(100).optional(),
         text: z.string().max(5000).optional(),
+        contact_id: z.string().uuid().optional(),
         due_date: z.string().optional(),
         done_date: z.string().nullable().optional(),
       }),
