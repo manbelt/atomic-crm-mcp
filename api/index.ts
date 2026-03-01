@@ -194,8 +194,8 @@ const tools = {
     handler: async (params: { query: string; limit?: number }, context: McpContext) => {
       try {
         const result = await supabaseQuery('contacts', {
-          select: 'id,first_name,last_name,email_jsonb,phone_jsonb,title,status',
-          filter: `or(first_name.ilike.%${params.query}%,last_name.ilike.%${params.query}%,email_jsonb.ilike.%${params.query}%)`,
+          select: 'id,first_name,last_name,email,phone,job_title,status',
+          filter: `or(first_name.ilike.%${params.query}%,last_name.ilike.%${params.query}%,email.ilike.%${params.query}%)`,
           limit: params.limit || 10,
         }, context.userToken);
         
@@ -227,7 +227,7 @@ const tools = {
         const [contacts, deals, tasks] = await Promise.all([
           supabaseQuery('contacts', { select: 'count' }, context.userToken),
           supabaseQuery('deals', { select: 'count' }, context.userToken),
-          supabaseQuery('tasks', { select: 'count', filter: 'status.eq.pending' }, context.userToken),
+          supabaseQuery('tasks', { select: 'count' }, context.userToken),
         ]);
         
         return {
