@@ -3,17 +3,17 @@ import { executeParameterizedQuery, isValidTable } from "../../db/query-builder.
 import type { McpContext } from "../server.js";
 
 /**
- * Input schema for listing journey legs
+ * Input schema for getting deal journey legs
  */
-const ListJourneyLegsSchema = z.object({
-  deal_id: z.number().int().positive().describe("ID of the deal to list journey legs for"),
+const GetDealJourneyLegsSchema = z.object({
+  deal_id: z.union([z.string(), z.number()]).describe("ID of the deal to list journey legs for (bigint)"),
 });
 
 /**
- * Lists all journey legs for a deal, ordered by leg_order
+ * Gets all journey legs for a deal, ordered by leg_order
  */
-async function listJourneyLegs(
-  params: z.infer<typeof ListJourneyLegsSchema>,
+async function getDealJourneyLegs(
+  params: z.infer<typeof GetDealJourneyLegsSchema>,
   context: McpContext
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
@@ -25,10 +25,20 @@ async function listJourneyLegs(
       };
     }
 
+    // Convert deal_id to number if it's a string
+    const dealId = typeof params.deal_id === 'string' ? parseInt(params.deal_id, 10) : params.deal_id;
+
+    if (isNaN(dealId)) {
+      return {
+        success: false,
+        error: "Invalid deal_id: must be a valid number",
+      };
+    }
+
     // Verify the user has access to this deal
     const dealCheck = await executeParameterizedQuery(
       `SELECT id FROM deals WHERE id = $1 AND sales_id IN (SELECT id FROM sales WHERE user_id = $2)`,
-      [params.deal_id, context.authInfo.userId],
+      [dealId, context.authInfo.userId],
       context
     );
 
@@ -44,9 +54,8 @@ async function listJourneyLegs(
       `SELECT 
         id, deal_id, leg_order, leg_type,
         pickup_datetime, pickup_timezone,
-        scheduled_departure_datetime, scheduled_arrival_datetime,
         pickup_location_text, dropoff_location_text,
-        transport_mode, carrier, transport_number,
+        transport_mode, carrier_or_operator, transport_number,
         origin_code, destination_code,
         terminal, gate, platform,
         meet_point_instructions, driver_notes, dispatch_notes,
@@ -54,7 +63,7 @@ async function listJourneyLegs(
       FROM deal_journey_legs 
       WHERE deal_id = $1 
       ORDER BY leg_order ASC`,
-      [params.deal_id],
+      [dealId],
       context
     );
 
@@ -77,10 +86,10 @@ async function listJourneyLegs(
   }
 }
 
-export const list_journey_legs = {
+export const get_deal_journey_legs = {
   definition: {
-    description: "Lists all journey legs for a specific deal, ordered by leg order",
-    inputSchema: ListJourneyLegsSchema,
+    description: "Gets all journey legs for a specific deal, ordered by leg order",
+    inputSchema: GetDealJourneyLegsSchema,
   },
-  handler: listJourneyLegs,
+  handler: getDealJourneyLegs,
 };

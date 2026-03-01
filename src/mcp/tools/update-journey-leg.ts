@@ -25,16 +25,14 @@ const TRANSPORT_MODES = ["flight", "train", "none"] as const;
  */
 const UpdateJourneyLegSchema = z.object({
   id: z.string().uuid().describe("UUID of the journey leg to update"),
-  leg_order: z.number().int().positive().optional().describe("Order of the leg in the journey"),
+  leg_order: z.number().int().min(1).optional().describe("Order of the leg in the journey"),
   leg_type: z.enum(LEG_TYPES).optional().describe("Type of journey leg"),
   pickup_datetime: z.string().optional().describe("Pickup datetime (ISO 8601 format)"),
   pickup_timezone: z.string().optional().describe("Timezone for pickup time"),
-  scheduled_departure_datetime: z.string().optional().describe("Scheduled departure datetime"),
-  scheduled_arrival_datetime: z.string().optional().describe("Scheduled arrival datetime"),
   pickup_location_text: z.string().min(1).max(500).optional().describe("Pickup location description"),
   dropoff_location_text: z.string().max(500).optional().describe("Dropoff location description"),
   transport_mode: z.enum(TRANSPORT_MODES).optional().describe("Mode of transport"),
-  carrier: z.string().max(100).optional().describe("Carrier/operator name"),
+  carrier_or_operator: z.string().max(100).optional().describe("Carrier/operator name"),
   transport_number: z.string().max(50).optional().describe("Flight number or train number"),
   origin_code: z.string().max(10).optional().describe("Origin airport/station code"),
   destination_code: z.string().max(10).optional().describe("Destination airport/station code"),
@@ -50,6 +48,7 @@ const UpdateJourneyLegSchema = z.object({
  * Sanitize a string for database
  */
 function sanitizeString(str: string | undefined, maxLength: number): string | null {
+  if (str === undefined) return undefined as any;
   if (!str) return null;
   const trimmed = str.trim();
   return trimmed.length > 0 ? trimmed.substring(0, maxLength) : null;
@@ -76,7 +75,7 @@ async function updateJourneyLeg(
       `SELECT jl.id, jl.deal_id, jl.transport_mode 
        FROM deal_journey_legs jl
        JOIN deals d ON jl.deal_id = d.id
-       WHERE jl.id = $1 AND d.sales_id IN (SELECT id FROM sales WHERE user_id = $2)`,
+       WHERE jl.id = $1::uuid AND d.sales_id IN (SELECT id FROM sales WHERE user_id = $2)`,
       [params.id, context.authInfo.userId],
       context
     );
@@ -94,39 +93,24 @@ async function updateJourneyLeg(
     const transportMode = params.transport_mode || existingLeg.transport_mode;
     if (
       (transportMode === "flight" || transportMode === "train") &&
-      !params.transport_number &&
-      !existingLeg.transport_number
+      !params.transport_number
     ) {
-      return {
-        success: false,
-        error: `transport_number is required when transport_mode is ${transportMode}`,
-      };
+      // Check if there's an existing transport_number
+      const existingTransportCheck = await executeParameterizedQuery(
+        `SELECT transport_number FROM deal_journey_legs WHERE id = $1::uuid`,
+        [params.id],
+        context
+      );
+      
+      if (!existingTransportCheck.success || !existingTransportCheck.data?.[0]?.transport_number) {
+        return {
+          success: false,
+          error: `transport_number is required when transport_mode is ${transportMode}`,
+        };
+      }
     }
 
-    // Validate: dropoff_location_text required for certain leg types
-    const legTypesRequiringDropoff = [
-      "airport_arrival",
-      "airport_departure",
-      "train_arrival",
-      "train_departure",
-      "point_to_point",
-    ];
-    
-    const newLegType = params.leg_type || existingLeg.leg_type;
-    
-    if (
-      newLegType &&
-      legTypesRequiringDropoff.includes(newLegType) &&
-      !params.dropoff_location_text &&
-      !existingLeg.dropoff_location_text
-    ) {
-      return {
-        success: false,
-        error: `dropoff_location_text is required when leg_type is ${newLegType}`,
-      };
-    }
-
-    // Build the update query dynamically
+    // Build dynamic update query
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -147,14 +131,6 @@ async function updateJourneyLeg(
       updates.push(`pickup_timezone = $${paramIndex++}`);
       values.push(params.pickup_timezone);
     }
-    if (params.scheduled_departure_datetime !== undefined) {
-      updates.push(`scheduled_departure_datetime = $${paramIndex++}`);
-      values.push(params.scheduled_departure_datetime || null);
-    }
-    if (params.scheduled_arrival_datetime !== undefined) {
-      updates.push(`scheduled_arrival_datetime = $${paramIndex++}`);
-      values.push(params.scheduled_arrival_datetime || null);
-    }
     if (params.pickup_location_text !== undefined) {
       updates.push(`pickup_location_text = $${paramIndex++}`);
       values.push(sanitizeString(params.pickup_location_text, 500));
@@ -167,9 +143,9 @@ async function updateJourneyLeg(
       updates.push(`transport_mode = $${paramIndex++}`);
       values.push(params.transport_mode);
     }
-    if (params.carrier !== undefined) {
-      updates.push(`carrier = $${paramIndex++}`);
-      values.push(sanitizeString(params.carrier, 100));
+    if (params.carrier_or_operator !== undefined) {
+      updates.push(`carrier_or_operator = $${paramIndex++}`);
+      values.push(sanitizeString(params.carrier_or_operator, 100));
     }
     if (params.transport_number !== undefined) {
       updates.push(`transport_number = $${paramIndex++}`);
@@ -216,21 +192,20 @@ async function updateJourneyLeg(
     }
 
     updates.push(`updated_at = NOW()`);
-    values.push(params.id);
 
     const updateSql = `
-      UPDATE deal_journey_legs 
+      UPDATE deal_journey_legs
       SET ${updates.join(", ")}
-      WHERE id = $${paramIndex}
+      WHERE id = $${paramIndex++}::uuid
       RETURNING id, deal_id, leg_order, leg_type, pickup_datetime, pickup_timezone,
-                scheduled_departure_datetime, scheduled_arrival_datetime,
                 pickup_location_text, dropoff_location_text,
-                transport_mode, carrier, transport_number,
+                transport_mode, carrier_or_operator, transport_number,
                 origin_code, destination_code,
                 terminal, gate, platform,
                 meet_point_instructions, driver_notes, dispatch_notes,
                 created_at, updated_at
     `;
+    values.push(params.id);
 
     const result = await executeParameterizedQuery(updateSql, values, context);
 
@@ -253,7 +228,7 @@ async function updateJourneyLeg(
   }
 }
 
-export const update_journey_leg = {
+export const update_deal_journey_leg = {
   definition: {
     description: "Updates an existing journey leg",
     inputSchema: UpdateJourneyLegSchema,

@@ -17,11 +17,11 @@ import { delete_contact } from "./tools/delete-contact.js";
 import { delete_deal } from "./tools/delete-deal.js";
 import { delete_task } from "./tools/delete-task.js";
 import { delete_company } from "./tools/delete-company.js";
-import { list_journey_legs } from "./tools/list-journey-legs.js";
-import { create_journey_leg } from "./tools/create-journey-leg.js";
-import { update_journey_leg } from "./tools/update-journey-leg.js";
-import { delete_journey_leg } from "./tools/delete-journey-leg.js";
-import { reorder_journey_leg } from "./tools/reorder-journey-leg.js";
+import { get_deal_journey_legs } from "./tools/get-deal-journey-legs.js";
+import { create_deal_journey_leg } from "./tools/create-journey-leg.js";
+import { update_deal_journey_leg } from "./tools/update-journey-leg.js";
+import { delete_deal_journey_leg } from "./tools/delete-journey-leg.js";
+import { reorder_deal_journey_leg } from "./tools/reorder-journey-leg.js";
 import { recordUsage, sanitizeParams } from "../services/usage-tracker.js";
 import type { AuthInfo } from "../auth/jwt-validator.js";
 
@@ -43,28 +43,28 @@ export function createMcpServer(context: McpContext) {
     query, 
     search_contacts, 
     get_summary,
-    list_journey_legs,
+    get_deal_journey_legs,
     // Create operations
     create_contact,
     create_deal,
     create_task,
     create_company,
     create_note,
-    create_journey_leg,
+    create_deal_journey_leg,
     // Update operations
     update_contact,
     update_deal,
     update_task,
     update_company,
-    update_journey_leg,
+    update_deal_journey_leg,
     // Delete operations
     delete_contact,
     delete_deal,
     delete_task,
     delete_company,
-    delete_journey_leg,
+    delete_deal_journey_leg,
     // Reorder operations
-    reorder_journey_leg,
+    reorder_deal_journey_leg,
   };
   
   for (const [name, tool] of Object.entries(tools)) {

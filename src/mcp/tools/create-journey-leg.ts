@@ -24,17 +24,15 @@ const TRANSPORT_MODES = ["flight", "train", "none"] as const;
  * Input schema for creating a journey leg
  */
 const CreateJourneyLegSchema = z.object({
-  deal_id: z.number().int().positive().describe("ID of the deal to add journey leg to"),
-  leg_order: z.number().int().positive().optional().default(1).describe("Order of the leg in the journey"),
+  deal_id: z.union([z.string(), z.number()]).describe("ID of the deal to add journey leg to (bigint)"),
+  leg_order: z.number().int().min(1).optional().default(1).describe("Order of the leg in the journey"),
   leg_type: z.enum(LEG_TYPES).describe("Type of journey leg"),
   pickup_datetime: z.string().describe("Pickup datetime (ISO 8601 format)"),
   pickup_timezone: z.string().optional().default("Europe/Paris").describe("Timezone for pickup time"),
-  scheduled_departure_datetime: z.string().optional().describe("Scheduled departure datetime"),
-  scheduled_arrival_datetime: z.string().optional().describe("Scheduled arrival datetime"),
   pickup_location_text: z.string().min(1).max(500).describe("Pickup location description"),
   dropoff_location_text: z.string().max(500).optional().describe("Dropoff location description"),
   transport_mode: z.enum(TRANSPORT_MODES).optional().default("none").describe("Mode of transport"),
-  carrier: z.string().max(100).optional().describe("Carrier/operator name"),
+  carrier_or_operator: z.string().max(100).optional().describe("Carrier/operator name"),
   transport_number: z.string().max(50).optional().describe("Flight number or train number"),
   origin_code: z.string().max(10).optional().describe("Origin airport/station code"),
   destination_code: z.string().max(10).optional().describe("Destination airport/station code"),
@@ -71,10 +69,20 @@ async function createJourneyLeg(
       };
     }
 
+    // Convert deal_id to number if it's a string
+    const dealId = typeof params.deal_id === 'string' ? parseInt(params.deal_id, 10) : params.deal_id;
+
+    if (isNaN(dealId)) {
+      return {
+        success: false,
+        error: "Invalid deal_id: must be a valid number",
+      };
+    }
+
     // Verify the user has access to this deal
     const dealCheck = await executeParameterizedQuery(
       `SELECT id FROM deals WHERE id = $1 AND sales_id IN (SELECT id FROM sales WHERE user_id = $2)`,
-      [params.deal_id, context.authInfo.userId],
+      [dealId, context.authInfo.userId],
       context
     );
 
@@ -117,10 +125,10 @@ async function createJourneyLeg(
 
     // If no leg_order provided, get the next available order
     let legOrder = params.leg_order;
-    if (!legOrder) {
+    if (!legOrder || legOrder === 1) {
       const maxOrderResult = await executeParameterizedQuery(
         `SELECT COALESCE(MAX(leg_order), 0) + 1 as next_order FROM deal_journey_legs WHERE deal_id = $1`,
-        [params.deal_id],
+        [dealId],
         context
       );
       legOrder = maxOrderResult.success ? maxOrderResult.data?.[0]?.next_order ?? 1 : 1;
@@ -131,20 +139,18 @@ async function createJourneyLeg(
       INSERT INTO deal_journey_legs (
         deal_id, leg_order, leg_type,
         pickup_datetime, pickup_timezone,
-        scheduled_departure_datetime, scheduled_arrival_datetime,
         pickup_location_text, dropoff_location_text,
-        transport_mode, carrier, transport_number,
+        transport_mode, carrier_or_operator, transport_number,
         origin_code, destination_code,
         terminal, gate, platform,
         meet_point_instructions, driver_notes, dispatch_notes,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW()
       )
       RETURNING id, deal_id, leg_order, leg_type, pickup_datetime, pickup_timezone,
-                scheduled_departure_datetime, scheduled_arrival_datetime,
                 pickup_location_text, dropoff_location_text,
-                transport_mode, carrier, transport_number,
+                transport_mode, carrier_or_operator, transport_number,
                 origin_code, destination_code,
                 terminal, gate, platform,
                 meet_point_instructions, driver_notes, dispatch_notes,
@@ -154,17 +160,15 @@ async function createJourneyLeg(
     const result = await executeParameterizedQuery(
       insertSql,
       [
-        params.deal_id,
+        dealId,
         legOrder,
         params.leg_type,
         params.pickup_datetime,
         params.pickup_timezone,
-        params.scheduled_departure_datetime || null,
-        params.scheduled_arrival_datetime || null,
         sanitizeString(params.pickup_location_text, 500),
         sanitizeString(params.dropoff_location_text, 500),
         params.transport_mode,
-        sanitizeString(params.carrier, 100),
+        sanitizeString(params.carrier_or_operator, 100),
         sanitizeString(params.transport_number, 50),
         sanitizeString(params.origin_code, 10),
         sanitizeString(params.destination_code, 10),
@@ -197,7 +201,7 @@ async function createJourneyLeg(
   }
 }
 
-export const create_journey_leg = {
+export const create_deal_journey_leg = {
   definition: {
     description: "Creates a new journey leg for a deal with pickup/dropoff details",
     inputSchema: CreateJourneyLegSchema,

@@ -7,9 +7,9 @@ import { decodeJwt } from "jose";
  * Input schema for reordering a journey leg
  */
 const ReorderJourneyLegSchema = z.object({
-  deal_id: z.number().int().positive().describe("ID of the deal"),
+  deal_id: z.union([z.string(), z.number()]).describe("ID of the deal (bigint)"),
   leg_id: z.string().uuid().describe("UUID of the journey leg to reorder"),
-  new_leg_order: z.number().int().positive().describe("New order position for the leg"),
+  new_leg_order: z.number().int().min(1).describe("New order position for the leg"),
 });
 
 /**
@@ -32,6 +32,16 @@ async function reorderJourneyLeg(
       };
     }
 
+    // Convert deal_id to number if it's a string
+    const dealId = typeof params.deal_id === 'string' ? parseInt(params.deal_id, 10) : params.deal_id;
+
+    if (isNaN(dealId)) {
+      return {
+        success: false,
+        error: "Invalid deal_id: must be a valid number",
+      };
+    }
+
     client = await pool.connect();
     const jwtClaims = decodeJwt(context.userToken);
 
@@ -50,7 +60,7 @@ async function reorderJourneyLeg(
     // Verify the user has access to this deal
     const dealCheck = await client.query(
       `SELECT id FROM deals WHERE id = $1 AND sales_id IN (SELECT id FROM sales WHERE user_id = $2)`,
-      [params.deal_id, context.authInfo.userId]
+      [dealId, context.authInfo.userId]
     );
 
     if (!dealCheck.rows.length) {
@@ -63,8 +73,8 @@ async function reorderJourneyLeg(
 
     // Verify the leg exists and belongs to this deal
     const legCheck = await client.query(
-      `SELECT id, leg_order FROM deal_journey_legs WHERE id = $1 AND deal_id = $2`,
-      [params.leg_id, params.deal_id]
+      `SELECT id, leg_order FROM deal_journey_legs WHERE id = $1::uuid AND deal_id = $2`,
+      [params.leg_id, dealId]
     );
 
     if (!legCheck.rows.length) {
@@ -85,7 +95,7 @@ async function reorderJourneyLeg(
         success: true,
         data: { 
           id: params.leg_id, 
-          deal_id: params.deal_id, 
+          deal_id: dealId, 
           leg_order: newOrder,
           message: "Leg already at requested position" 
         },
@@ -95,7 +105,7 @@ async function reorderJourneyLeg(
     // Get total number of legs for this deal
     const countResult = await client.query(
       `SELECT COUNT(*) as total FROM deal_journey_legs WHERE deal_id = $1`,
-      [params.deal_id]
+      [dealId]
     );
 
     const totalLegs = parseInt(countResult.rows[0].total, 10);
@@ -119,7 +129,7 @@ async function reorderJourneyLeg(
          WHERE deal_id = $1 
            AND leg_order > $2 
            AND leg_order <= $3`,
-        [params.deal_id, currentOrder, newOrder]
+        [dealId, currentOrder, newOrder]
       );
     } else {
       // Moving up: increment orders of legs between new and old position
@@ -129,7 +139,7 @@ async function reorderJourneyLeg(
          WHERE deal_id = $1 
            AND leg_order >= $2 
            AND leg_order < $3`,
-        [params.deal_id, newOrder, currentOrder]
+        [dealId, newOrder, currentOrder]
       );
     }
 
@@ -137,7 +147,7 @@ async function reorderJourneyLeg(
     await client.query(
       `UPDATE deal_journey_legs 
        SET leg_order = $1, updated_at = NOW()
-       WHERE id = $2`,
+       WHERE id = $2::uuid`,
       [newOrder, params.leg_id]
     );
 
@@ -146,9 +156,8 @@ async function reorderJourneyLeg(
       `SELECT 
         id, deal_id, leg_order, leg_type,
         pickup_datetime, pickup_timezone,
-        scheduled_departure_datetime, scheduled_arrival_datetime,
         pickup_location_text, dropoff_location_text,
-        transport_mode, carrier, transport_number,
+        transport_mode, carrier_or_operator, transport_number,
         origin_code, destination_code,
         terminal, gate, platform,
         meet_point_instructions, driver_notes, dispatch_notes,
@@ -156,7 +165,7 @@ async function reorderJourneyLeg(
       FROM deal_journey_legs 
       WHERE deal_id = $1 
       ORDER BY leg_order ASC`,
-      [params.deal_id]
+      [dealId]
     );
 
     // Commit transaction
@@ -186,7 +195,7 @@ async function reorderJourneyLeg(
   }
 }
 
-export const reorder_journey_leg = {
+export const reorder_deal_journey_leg = {
   definition: {
     description: "Reorders a journey leg within a deal. All other legs are automatically adjusted to maintain contiguous ordering. Uses transaction-safe atomic updates.",
     inputSchema: ReorderJourneyLegSchema,

@@ -68,7 +68,7 @@ async function deleteJourneyLeg(
   }
 }
 
-export const delete_journey_leg = {
+export const delete_deal_journey_leg = {
   definition: {
     description: "Deletes a journey leg",
     inputSchema: DeleteJourneyLegSchema,
